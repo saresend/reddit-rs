@@ -1,7 +1,7 @@
 extern crate reqwest;
 
-use std::io::Result;
 use std::collections::HashMap;
+use reqwest::Result;
 
 pub struct Reddit {}
 
@@ -17,13 +17,20 @@ impl Reddit {
         map.insert("username", username);
         map.insert("password", password);
         let client = reqwest::Client::new();
-        let url = client
+        match client
             .post("https://www.reddit.com/api/v1/access_token")
-            .basic_auth(client_id, Some(password))
-            .json(&map)
+            .basic_auth(client_id, Some(client_secret))
+            .form(&map)
             .send()
-            .unwrap();
-        unimplemented!();
+        {
+            Ok(mut response) => {
+                println!("{}", response.status());
+                println!("{}", response.url());
+                println!("{}", response.text().unwrap());
+                Ok(Reddit {})
+            }
+            Err(err) => Err(err),
+        }
     }
 }
 
