@@ -1,9 +1,23 @@
 extern crate reqwest;
 
+#[macro_use]
+extern crate serde_derive;
+
+extern crate serde;
+extern crate serde_json;
+
+mod models;
+
 use std::collections::HashMap;
 use reqwest::Result;
 
-pub struct Reddit {}
+use models::*;
+
+pub struct Reddit {
+    token: String,
+    user_agent: String,
+    url: String,
+}
 
 impl Reddit {
     pub fn new(
@@ -17,20 +31,17 @@ impl Reddit {
         map.insert("username", username);
         map.insert("password", password);
         let client = reqwest::Client::new();
-        match client
+        let mut result = client
             .post("https://www.reddit.com/api/v1/access_token")
             .basic_auth(client_id, Some(client_secret))
             .form(&map)
-            .send()
-        {
-            Ok(mut response) => {
-                println!("{}", response.status());
-                println!("{}", response.url());
-                println!("{}", response.text().unwrap());
-                Ok(Reddit {})
-            }
-            Err(err) => Err(err),
-        }
+            .send()?;
+        let auth_response: AuthResponse = result.json()?;
+        Ok(Reddit {
+            token: auth_response.access_token,
+            user_agent: String::from(format!("reddit-rs/0.1 by {}", username)),
+            url: String::from("https://oauth.reddit.com/api/v1/"),
+        })
     }
 }
 
