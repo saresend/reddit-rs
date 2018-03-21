@@ -28,7 +28,22 @@ impl Reddit {
 }
 
 #[cfg(test)]
+extern crate dotenv;
 mod tests {
+    use super::*;
+    use std::env;
     #[test]
-    fn it_works() {}
+    fn test_authorization() {
+        dotenv::dotenv().ok();
+        if let Ok(reddit) = Reddit::new(
+            &env::var("client_id").unwrap(),
+            &env::var("client_secret").unwrap(),
+            &env::var("username").unwrap(),
+            &env::var("password").unwrap(),
+        ) {
+            assert!(true);
+        } else {
+            assert!(false);
+        }
+    }
 }
