@@ -5,3 +5,6 @@ authors = ["saresend <saresend@usc.edu>"]
 
 [dependencies]
 reqwest = "0.8.5"
+
+[dev-dependencies]
+dotenv = "0.11.0"
