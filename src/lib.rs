@@ -68,7 +68,13 @@ impl Reddit {
         self.token = auth_response.access_token;
     }
 
-    fn execute(&self, endpoint: &str, http_method: Method, content: Option<ContentType>, body: Option<&[u8]>) -> Result<String> {
+    fn execute(
+        &self,
+        endpoint: &str,
+        http_method: Method,
+        content: Option<ContentType>,
+        body: Option<&[u8]>,
+    ) -> Result<String> {
         let url = self.url.join(endpoint).unwrap();
         println!("URL: {}", url);
         let mut request = Request::new(http_method, url);
@@ -78,6 +84,13 @@ impl Reddit {
             headers.set(Authorization(Bearer {
                 token: self.token.clone(),
             }));
+        }
+
+        if let (Some(c_type), Some(b)) = (content, body) {
+            request.headers_mut().set(c_type);
+            let mut v = vec![0; b.len()];
+            v.clone_from_slice(b);
+            *request.body_mut() = Some(v.into());
         }
 
         let client = reqwest::Client::new();
@@ -93,20 +106,28 @@ impl Reddit {
     }
 
     pub fn get_subreddits(&self, query: &str) {
-
         //Stuct to support search functionality for subreddit
         #[derive(Serialize)]
         struct Search {
-            query: String, 
-            exact: bool, 
-            include_over_18: bool, 
-            include_unadvertisable: bool, 
+            query: String,
+            exact: bool,
+            include_over_18: bool,
+            include_unadvertisable: bool,
         }
 
-        let query = Search { query: query.to_string, 
-                            exact: false, include_over_18: false, include_unadvertisable: false}
+        let query = Search {
+            query: query.to_string(),
+            exact: false,
+            include_over_18: false,
+            include_unadvertisable: false,
+        };
 
-        match self.execute("search_subreddits", Method::Post, ContentType::json, serde_json::to_vec(Search) {
+        match self.execute(
+            "search_subreddits",
+            Method::Post,
+            Some(ContentType::json()),
+            Some(&serde_json::to_vec(&query).unwrap()),
+        ) {
             Ok(res) => println!("{}", res),
             Err(err) => println!("{}", err),
         }
@@ -157,7 +178,7 @@ mod tests {
             &env::var("password").unwrap(),
         ).unwrap();
 
-        reddit.get_subreddits();
+        reddit.get_subreddits("technology");
     }
 
 }
