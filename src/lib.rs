@@ -82,6 +82,13 @@ impl Reddit {
         let mut response = client.execute(request)?;
         Ok(response.text()?)
     }
+
+    pub fn me(&self) -> Result<RedditUser> {
+        match self.execute("me", Method::Get) {
+            Ok(res) => Ok(serde_json::from_str(&res).unwrap()),
+            Err(err) => Err(err),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -99,6 +106,21 @@ mod tests {
             &env::var("password").unwrap(),
         ) {
             assert!(true);
+        } else {
+            assert!(false);
+        }
+    }
+    #[test]
+    fn test_me_endpoint() {
+        dotenv::dotenv().ok();
+        let reddit = Reddit::new(
+            &env::var("client_id").unwrap(),
+            &env::var("client_secret").unwrap(),
+            &env::var("username").unwrap(),
+            &env::var("password").unwrap(),
+        ).unwrap();
+        if let Ok(_) = reddit.me() {
+
         } else {
             assert!(false);
         }
