@@ -23,6 +23,9 @@ pub struct Reddit {
     token: String,
     user_agent: String,
     url: Url,
+    credentials: HashMap<String, String>,
+    client_id: String,
+    client_secret: String,
 }
 
 impl Reddit {
@@ -33,9 +36,9 @@ impl Reddit {
         password: &str,
     ) -> Result<Reddit> {
         let mut map = HashMap::new();
-        map.insert("grant_type", "password");
-        map.insert("username", username);
-        map.insert("password", password);
+        map.insert("grant_type".to_string(), "password".to_string());
+        map.insert("username".to_string(), username.to_string());
+        map.insert("password".to_string(), password.to_string());
         let client = reqwest::Client::new();
         let mut result = client
             .post("https://www.reddit.com/api/v1/access_token")
@@ -47,7 +50,21 @@ impl Reddit {
             token: auth_response.access_token,
             user_agent: String::from(format!("reddit-rs/0.1 by {}", username)),
             url: Url::parse("https://oauth.reddit.com/api/v1/").unwrap(),
+            credentials: map,
+            client_id: client_id.to_string(),
+            client_secret: client_secret.to_string(),
         })
+    }
+    fn refresh_token(&mut self) {
+        let client = reqwest::Client::new();
+        let mut result = client
+            .post("https://www.reddit.com/api/v1/access_token")
+            .basic_auth(self.client_id.clone(), Some(self.client_secret.clone()))
+            .form(&self.credentials)
+            .send()
+            .unwrap();
+        let auth_response: AuthResponse = result.json().unwrap();
+        self.token = auth_response.access_token;
     }
 
     fn execute(&self, endpoint: &str, http_method: Method) -> Result<String> {
