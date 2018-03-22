@@ -3,20 +3,26 @@ extern crate reqwest;
 #[macro_use]
 extern crate serde_derive;
 
+extern crate hyper;
 extern crate serde;
 extern crate serde_json;
+
+extern crate url;
 
 mod models;
 
 use std::collections::HashMap;
-use reqwest::Result;
+use reqwest::{Request, Result};
 
 use models::*;
+use url::Url;
+use reqwest::Method;
+use hyper::header::{Authorization, Bearer, Headers};
 
 pub struct Reddit {
     token: String,
     user_agent: String,
-    url: String,
+    url: Url,
 }
 
 impl Reddit {
@@ -40,8 +46,24 @@ impl Reddit {
         Ok(Reddit {
             token: auth_response.access_token,
             user_agent: String::from(format!("reddit-rs/0.1 by {}", username)),
-            url: String::from("https://oauth.reddit.com/api/v1/"),
+            url: Url::parse("https://oauth.reddit.com/api/v1/").unwrap(),
         })
+    }
+
+    fn execute(&self, endpoint: &str, http_method: Method) -> Result<String> {
+        let url = self.url.join(endpoint).unwrap();
+        let mut request = Request::new(http_method, url);
+
+        {
+            let headers = request.headers_mut();
+            headers.set(Authorization(Bearer {
+                token: self.token.clone(),
+            }));
+        }
+
+        let client = reqwest::Client::new();
+        let mut response = client.execute(request)?;
+        Ok(response.text()?)
     }
 }
 
