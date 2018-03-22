@@ -18,6 +18,7 @@ use models::*;
 use url::Url;
 use reqwest::Method;
 use hyper::header::{Authorization, Bearer, Headers};
+use reqwest::header::ContentType;
 
 pub struct Reddit {
     token: String,
@@ -67,7 +68,7 @@ impl Reddit {
         self.token = auth_response.access_token;
     }
 
-    fn execute(&self, endpoint: &str, http_method: Method) -> Result<String> {
+    fn execute(&self, endpoint: &str, http_method: Method, content: Option<ContentType>, body: Option<&[u8]>) -> Result<String> {
         let url = self.url.join(endpoint).unwrap();
         println!("URL: {}", url);
         let mut request = Request::new(http_method, url);
@@ -85,13 +86,27 @@ impl Reddit {
     }
 
     pub fn me(&self) -> Result<RedditUser> {
-        match self.execute("me", Method::Get) {
+        match self.execute("me", Method::Get, None, None) {
             Ok(res) => Ok(serde_json::from_str(&res).unwrap()),
             Err(err) => Err(err),
         }
     }
-    pub fn blocked(&self) {
-        match self.execute("me/friends", Method::Get) {
+
+    pub fn get_subreddits(&self, query: &str) {
+
+        //Stuct to support search functionality for subreddit
+        #[derive(Serialize)]
+        struct Search {
+            query: String, 
+            exact: bool, 
+            include_over_18: bool, 
+            include_unadvertisable: bool, 
+        }
+
+        let query = Search { query: query.to_string, 
+                            exact: false, include_over_18: false, include_unadvertisable: false}
+
+        match self.execute("search_subreddits", Method::Post, ContentType::json, serde_json::to_vec(Search) {
             Ok(res) => println!("{}", res),
             Err(err) => println!("{}", err),
         }
@@ -133,7 +148,7 @@ mod tests {
         }
     }
     #[test]
-    fn test_blocked_endpoint() {
+    fn test_subreddit_search() {
         dotenv::dotenv().ok();
         let reddit = Reddit::new(
             &env::var("client_id").unwrap(),
@@ -141,6 +156,8 @@ mod tests {
             &env::var("username").unwrap(),
             &env::var("password").unwrap(),
         ).unwrap();
-        reddit.blocked();
+
+        reddit.get_subreddits();
     }
+
 }
