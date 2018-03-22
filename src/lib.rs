@@ -69,6 +69,7 @@ impl Reddit {
 
     fn execute(&self, endpoint: &str, http_method: Method) -> Result<String> {
         let url = self.url.join(endpoint).unwrap();
+        println!("URL: {}", url);
         let mut request = Request::new(http_method, url);
 
         {
@@ -87,6 +88,12 @@ impl Reddit {
         match self.execute("me", Method::Get) {
             Ok(res) => Ok(serde_json::from_str(&res).unwrap()),
             Err(err) => Err(err),
+        }
+    }
+    pub fn blocked(&self) {
+        match self.execute("me/friends", Method::Get) {
+            Ok(res) => println!("{}", res),
+            Err(err) => println!("{}", err),
         }
     }
 }
@@ -124,5 +131,16 @@ mod tests {
         } else {
             assert!(false);
         }
+    }
+    #[test]
+    fn test_blocked_endpoint() {
+        dotenv::dotenv().ok();
+        let reddit = Reddit::new(
+            &env::var("client_id").unwrap(),
+            &env::var("client_secret").unwrap(),
+            &env::var("username").unwrap(),
+            &env::var("password").unwrap(),
+        ).unwrap();
+        reddit.blocked();
     }
 }
