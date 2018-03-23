@@ -20,6 +20,8 @@ use reqwest::Method;
 use hyper::header::{Authorization, Bearer, Headers};
 use reqwest::header::ContentType;
 
+use serde::Serialize;
+
 pub struct Reddit {
     token: String,
     user_agent: String,
@@ -68,38 +70,38 @@ impl Reddit {
         self.token = auth_response.access_token;
     }
 
-    fn execute(
+    fn execute<T: Serialize + ?Sized>(
         &self,
         endpoint: &str,
-        http_method: Method,
-        content: Option<ContentType>,
-        body: Option<&[u8]>,
+        method: Method,
+        data: &T,
     ) -> Result<String> {
-        let url = self.url.join(endpoint).unwrap();
-        println!("URL: {}", url);
-        let mut request = Request::new(http_method, url);
-
-        {
-            let headers = request.headers_mut();
-            headers.set(Authorization(Bearer {
-                token: self.token.clone(),
-            }));
-        }
-
-        if let (Some(c_type), Some(b)) = (content, body) {
-            request.headers_mut().set(c_type);
-            let mut v = vec![0; b.len()];
-            v.clone_from_slice(b);
-            *request.body_mut() = Some(v.into());
-        }
-
         let client = reqwest::Client::new();
-        let mut response = client.execute(request)?;
-        Ok(response.text()?)
+        let url = self.url.clone().into_string() + endpoint;
+        println!("{}", url);
+        let mut headers = Headers::new();
+        headers.set(Authorization(Bearer {
+            token: self.token.clone(),
+        }));
+        match method {
+            Method::Get => Ok(client
+                .get(&url)
+                .headers(headers)
+                .query(data)
+                .send()?
+                .text()?),
+            Method::Post => Ok(client
+                .post(&url)
+                .headers(headers)
+                .json(data)
+                .send()?
+                .text()?),
+            _ => unimplemented!(),
+        }
     }
 
     pub fn me(&self) -> Result<RedditUser> {
-        match self.execute("me", Method::Get, None, None) {
+        match self.execute("me", Method::Get, "") {
             Ok(res) => Ok(serde_json::from_str(&res).unwrap()),
             Err(err) => Err(err),
         }
@@ -118,16 +120,11 @@ impl Reddit {
         let query = Search {
             query: query.to_string(),
             exact: false,
-            include_over_18: false,
-            include_unadvertisable: false,
+            include_over_18: true,
+            include_unadvertisable: true,
         };
 
-        match self.execute(
-            "search_subreddits",
-            Method::Post,
-            Some(ContentType::json()),
-            Some(&serde_json::to_vec(&query).unwrap()),
-        ) {
+        match self.execute("api/search_reddit_names", Method::Get, &query) {
             Ok(res) => println!("{}", res),
             Err(err) => println!("{}", err),
         }
@@ -178,7 +175,7 @@ mod tests {
             &env::var("password").unwrap(),
         ).unwrap();
 
-        reddit.get_subreddits("technology");
+        reddit.get_subreddits("rust");
     }
 
 }
