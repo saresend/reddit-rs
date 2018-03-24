@@ -74,7 +74,7 @@ impl Reddit {
         &self,
         endpoint: &str,
         method: Method,
-        data: &T,
+        data: Option<&T>,
     ) -> Result<String> {
         let client = reqwest::Client::new();
         let url = self.url.clone().into_string() + endpoint;
@@ -87,21 +87,22 @@ impl Reddit {
             Method::Get => Ok(client
                 .get(&url)
                 .headers(headers)
-                .query(data)
+                .query(&data)
                 .send()?
                 .text()?),
             Method::Post => Ok(client
                 .post(&url)
                 .headers(headers)
-                .json(data)
+                .json(&data)
                 .send()?
                 .text()?),
+
             _ => unimplemented!(),
         }
     }
 
     pub fn me(&self) -> Result<RedditUser> {
-        match self.execute("me", Method::Get, "") {
+        match self.execute("me", Method::Get, None as Option<&str>) {
             Ok(res) => Ok(serde_json::from_str(&res).unwrap()),
             Err(err) => Err(err),
         }
@@ -124,7 +125,7 @@ impl Reddit {
             include_unadvertisable: true,
         };
 
-        match self.execute("api/search_reddit_names", Method::Get, &query) {
+        match self.execute("api/search_reddit_names", Method::Get, Some(&query)) {
             Ok(res) => println!("{}", res),
             Err(err) => println!("{}", err),
         }
